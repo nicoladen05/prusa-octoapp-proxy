@@ -1,0 +1,14 @@
+[project]
+name = "octoapp-prusa-proxy"
+version = "0.1.0"
+description = "Proxy to make prusa printer appear as octoprint"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]>=0.122.0",
+    "uvicorn>=0.38.0",
+]
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
