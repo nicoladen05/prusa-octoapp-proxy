@@ -1,8 +1,6 @@
-import asyncio
-import time
 from typing import cast
 
-from fastapi import Request, Response, WebSocket
+from fastapi import Request, Response
 from fastapi.routing import APIRouter
 from pydantic import BaseModel, Field
 
@@ -76,104 +74,6 @@ async def login(_login_data: LoginRequest, _response: Response):
     }
 
     return login_response
-
-
-@router.get("/sockjs/info")
-async def sockjs_info():
-    return {
-        "websocket": True,
-        "origins": ["*:*"],
-        "cookie_needed": False,
-        "entropy": 424242,
-    }
-
-
-async def handle_socket(websocket: WebSocket):
-    await websocket.accept()
-    print(" > WebSocket Joined!")
-
-    # 1. Handshake
-    await websocket.send_json(
-        {
-            "connected": {
-                "version": "1.9.0",
-                "display_version": "1.9.0",
-                "branch": "master",
-                "module": "OctoPrint",
-                "apikey": "dummy",
-                "config_hash": "dummy",
-            }
-        }
-    )
-
-    # 2. History
-    await websocket.send_json({"history": {"temps": [], "logs": []}})
-
-    # 3. Loop
-    try:
-        while True:
-            # THE FIX: Added "serverTime" to "current" object
-            current_payload = {
-                "current": {
-                    "serverTime": time.time(),  # <--- THIS WAS MISSING AND CAUSED THE CRASH
-                    "state": {
-                        "text": "Operational",
-                        "flags": {
-                            "operational": True,
-                            "printing": False,
-                            "closedOrError": False,
-                            "error": False,
-                            "paused": False,
-                            "ready": True,
-                            "sdReady": True,
-                        },
-                    },
-                    "job": {
-                        "file": {
-                            "name": None,
-                            "size": None,
-                            "origin": None,
-                            "date": None,
-                        },
-                        "estimatedPrintTime": 100,
-                        "lastPrintTime": None,
-                        "user": "prusa_admin",
-                    },
-                    "progress": {
-                        "completion": None,
-                        "filepos": None,
-                        "printTime": None,
-                        "printTimeLeft": None,
-                        "printTimeOrigin": None,
-                    },
-                    "currentZ": 0.0,
-                    "offsets": {},
-                    "resends": {"count": 0, "transmitted": 0, "ratio": 0},
-                    "temps": [
-                        {
-                            "time": int(time.time()),
-                            "tool0": {"actual": 215.0, "target": 215.0},
-                            "bed": {"actual": 60.0, "target": 60.0},
-                        }
-                    ],
-                    "logs": [],
-                }
-            }
-
-            await websocket.send_json(current_payload)
-            await asyncio.sleep(2.0)
-    except Exception as e:
-        print(f"Socket Disconnected: {e}")
-
-
-@router.websocket("/sockjs/{server_id}/{session_id}/websocket")
-async def sockjs_session(websocket: WebSocket, _server_id: str, _session_id: str):
-    await handle_socket(websocket)
-
-
-@router.websocket("/sockjs/websocket")
-async def sockjs_raw(websocket: WebSocket):
-    await handle_socket(websocket)
 
 
 @router.get("/api/version")
@@ -302,5 +202,7 @@ async def printer_status():
 
 
 @router.get("/plugin/pluginmanager/plugins/versions")
-async def plugin_versions() -> dict[None, None]:
-    return {}
+async def plugin_versions() -> dict[str, str | None]:
+    return {
+        "octoapp": "3.0.3",
+    }

@@ -1,14 +1,15 @@
 import uvicorn
 from fastapi import FastAPI
 
-from login import (  # pyright: ignore[reportImplicitRelativeImport]
-    router as login_router,
-)
+from src.data import router as data_router
+from src.login import router as login_router
 
 
-async def app():
+def app() -> FastAPI:
     app = FastAPI()
     app.include_router(login_router)
+    app.include_router(data_router)
+    return app
 
 
 if __name__ == "__main__":
