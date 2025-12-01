@@ -1,8 +1,14 @@
-from typing import cast
+from pprint import pp
+from typing import Any, cast
 
 from fastapi import Request, Response
 from fastapi.routing import APIRouter
 from pydantic import BaseModel, Field
+from starlette.responses import JSONResponse
+
+from src.data_poller import DataPoller
+from src.encryption import EncryptionHandler
+from src.notifications import NotificationHandler
 
 router = APIRouter()
 
@@ -83,19 +89,23 @@ async def get_version():
 
 @router.get("/api/connection")
 async def get_connection():
-    return {
-        "current": {
-            "state": "Operational",
-            "port": "/dev/ttyUSB0",
-            "baudrate": 115200,
-            "printerProfile": "_default",
-        },
-        "options": {
-            "ports": ["/dev/ttyUSB0"],
-            "baudrates": [115200],
-            "printerProfiles": [{"id": "_default", "name": "Prusa MK3/4"}],
-        },
-    }
+    if await DataPoller.get_instance().is_online():
+        return {
+            "current": {
+                "state": "Operational",
+                "port": "/dev/ttyUSB0",
+                "baudrate": 115200,
+                "printerProfile": "_default",
+            },
+            "options": {
+                "ports": ["/dev/ttyUSB0"],
+                "baudrates": [115200],
+                "printerProfiles": [{"id": "_default", "name": "Prusa MK3/4"}],
+            },
+        }
+    else:
+        print("Printer is offline")
+        return {}
 
 
 @router.post("/api/connection")
@@ -113,7 +123,9 @@ async def post_connection(request: Request):
 async def get_settings():
     return {
         "api": {"allowCrossOrigin": False, "key": None},
-        "appearance": {"name": "Prusa Proxy"},
+        "appearance": {
+            "name": "Prusa CORE One"
+        },  # TODO: Display the actual name of the printer
         "feature": {
             "gcodeViewer": True,
             "temperatureGraph": True,
@@ -123,6 +135,12 @@ async def get_settings():
             "uploads": "/home/pi/.octoprint/uploads",
             "watched": "/home/pi/.octoprint/watched",
             "logs": "/home/pi/.octoprint/logs",
+        },
+        "plugins": {
+            "octoapp": {
+                "version": "3.0.3",
+                "encryptionKey": EncryptionHandler.get_instance().get_key(),
+            }
         },
     }
 
@@ -175,8 +193,8 @@ async def system_info() -> dict[
 
 
 @router.get("/api/system/commands")
-async def system_commands() -> list[None]:
-    return []
+async def system_commands() -> dict[None, None]:
+    return {}
 
 
 @router.get("/api/printer")
@@ -206,3 +224,28 @@ async def plugin_versions() -> dict[str, str | None]:
     return {
         "octoapp": "3.0.3",
     }
+
+
+@router.post("/api/plugin/octoapp")
+async def octoapp_plugin(request: Request):
+    payload: dict[str, Any] = await request.json()
+    command = payload.get("command")
+
+    match command:
+        case "getPrinterFirmware":
+            print("OctoApp requested printer firmware")
+            return {
+                "name": "Marlin",
+                "version": "2.1.2",
+                "text": "Marlin firmware version 2.1.2",
+            }
+
+        case "registerForNotifications":
+            print("OctoApp registered for notifications")
+            _ = NotificationHandler(payload)
+            return {"result": "ok"}
+
+        case _:
+            print(f"Unknown command from OctoApp: {command}")
+            pp(payload)
+            return JSONResponse(status_code=400, content={"error": "Unknown command"})

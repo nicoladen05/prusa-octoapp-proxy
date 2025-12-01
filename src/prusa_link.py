@@ -69,6 +69,15 @@ class PrusaLink:
             print(f"Error: {e}")
             return None
 
+    async def is_online(self) -> bool:
+        """
+        Check if the PrusaLink server is online.
+
+        Returns:
+            bool: True if the server is online, False otherwise.
+        """
+        return await self._get("/api/version") is not None
+
     async def get_version(self) -> dict[str, Any] | None:  # pyright: ignore[reportExplicitAny]
         """
         Get the version information from the PrusaLink server.
@@ -133,6 +142,6 @@ class PrusaLink:
 if __name__ == "__main__":
     prusa_link = PrusaLink("http://192.168.2.137", "maker", "izPjsV5TQJR4Eai")
     asyncio.run(prusa_link.connect())
-    status = asyncio.run(prusa_link.get_status())
+    status = asyncio.run(prusa_link.get_job())
     assert status is not None
     pp(status)
