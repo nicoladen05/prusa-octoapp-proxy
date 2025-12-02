@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import Coroutine
 from enum import Enum
-from typing import Any, Callable, Literal, overload
+from typing import Any, Callable
 
 from src.print_job import PrintJob
 from src.printer_status import PrinterState, PrinterStatus
@@ -9,6 +9,10 @@ from src.prusa_link import PrusaLink
 
 
 class DataPoller:
+    """
+    The DataPoller class is responsible for polling data from the PrusaLink API and notifying subscribers of changes.
+    """
+
     _instance: DataPoller | None = None
 
     class Event(Enum):
@@ -25,7 +29,8 @@ class DataPoller:
         ] = {}
         self.current_print: PrintJob | None = None
         self.listen_task: asyncio.Task[None] | None = None
-        self.force_update: bool = False
+        self.previous_status: dict[str, Any] | None = None
+        self.previous_job: dict[str, Any] | None = None
 
     async def start(self) -> None:
         self.listen_task = asyncio.create_task(self.listen(2))
@@ -77,18 +82,19 @@ class DataPoller:
         Args:
             rate (float): The rate at which to listen for data updates.
         """
-        previous_status: dict[str, Any] | None = None
-        previous_job: dict[str, Any] | None = None
+        self.previous_status = None
+        self.previous_job = None
 
         while True:
             if len(self._subscribers) == 0 or not await self.link.is_online():
-                await asyncio.sleep(rate)
+                print("No subscribers or offline")
+                await asyncio.sleep(rate * 5)
                 continue
 
             # Check for status updates
             status: dict[str, Any] | None = await self.link.get_status()
 
-            if status is not None and status != previous_status:
+            if status is not None and status != self.previous_status:
                 printer: dict[str, int | str] = status["printer"]
 
                 printer_status = PrinterStatus(
@@ -107,7 +113,7 @@ class DataPoller:
                 await self._notify_subscribers(
                     DataPoller.Event.PRINTER_STATUS, printer_status
                 )
-                previous_status = status
+                self.previous_status = status
 
             # Check for job updates
             job: dict[str, Any] | None = (
@@ -116,7 +122,7 @@ class DataPoller:
                 else None
             )
 
-            if job is not None and job != previous_job:
+            if job is not None and job != self.previous_job:
                 if not (print_job := PrintJob.get(job["id"])):
                     print_job = PrintJob(
                         print_id=job["id"],
@@ -138,7 +144,7 @@ class DataPoller:
                     )
 
                 await self._notify_subscribers(DataPoller.Event.PRINT_JOB, print_job)
-                previous_job = job
+                self.previous_job = job
 
             await asyncio.sleep(rate)
 
@@ -151,3 +157,11 @@ class DataPoller:
         """
 
         return await self.link.is_online()
+
+    def force_update(self) -> None:
+        """
+        Force an update of the printer status and job information.
+        """
+
+        self.previous_status = None
+        self.previous_job = None

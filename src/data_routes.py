@@ -1,9 +1,6 @@
-import asyncio
-
-from fastapi import APIRouter, Request, WebSocket
+from fastapi import APIRouter, WebSocket
 
 from src.data_poller import DataPoller
-from src.notifications import NotificationHandler
 from src.websocket import WebSocketHandler
 
 router = APIRouter()
@@ -21,15 +18,11 @@ async def sockjs_info():
 
 @router.websocket("/sockjs/{server_id}/{session_id}/websocket")
 async def sockjs_session(websocket: WebSocket, _server_id: str, _session_id: str):
+    DataPoller.get_instance().force_update()
     await WebSocketHandler.get_instance().register_ws(websocket)
 
 
 @router.websocket("/sockjs/websocket")
 async def sockjs_raw(websocket: WebSocket):
+    DataPoller.get_instance().force_update()
     await WebSocketHandler.get_instance().register_ws(websocket)
-
-
-@router.post("/api/printer/command")
-async def printer_command(request: Request):
-    await asyncio.sleep(3)
-    await NotificationHandler.get_instance().send_notification()

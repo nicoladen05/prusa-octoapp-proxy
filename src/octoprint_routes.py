@@ -242,7 +242,7 @@ async def octoapp_plugin(request: Request):
 
         case "registerForNotifications":
             print("OctoApp registered for notifications")
-            _ = NotificationHandler(payload)
+            _ = NotificationHandler.get_instance().register(payload)
             return {"result": "ok"}
 
         case _:

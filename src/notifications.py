@@ -20,9 +20,9 @@ class NotificationHandler:
     class Event(Enum):
         PRINTING = "printing"
 
-    def __init__(self, data: dict[str, Any]):
+    def __init__(self):
         NotificationHandler._instance = self
-        self.devices: set[dict[str, str | None]] = set({})
+        self.devices: list[dict[str, str | None]] = []
 
     def register(self, data: dict[str, Any]):
         """
@@ -32,7 +32,7 @@ class NotificationHandler:
             data (dict[str, Any]): The device data.
         """
 
-        self.devices.add(
+        self.devices.append(
             {
                 "fcmToken": data.get("fcmToken", None),
                 "fcmFallbackToken": data.get("fcmTokenFallback", None),
@@ -63,7 +63,7 @@ class NotificationHandler:
         """
 
         if cls._instance is None:
-            raise ValueError("Notification Handler not initialized yet")
+            return NotificationHandler()
         return cls._instance
 
     @classmethod
@@ -73,6 +73,7 @@ class NotificationHandler:
     async def send_printing_notification(self, print_job: PrintJob | PrinterStatus):
         """
         Send a live printing notification to the app.
+        Subscriber to DataPoller.Events.PRINT_JOB
 
         Args:
             print_job (PrintJob): The print job object.
@@ -102,7 +103,7 @@ class NotificationHandler:
         """
 
         android_push_data = {
-            "type": event,
+            "type": event.value,
             "serverTime": int(time.time()),
             "serverTimePrecise": time.time(),
             "printId": args.get("print_id", None),
@@ -129,9 +130,4 @@ class NotificationHandler:
             }
 
             # Make the request
-            response = requests.post(
-                RELAY_URL, timeout=float(10), json=notification_data
-            )
-            print("Response headers:")
-            pp(response.headers)
-            print(response.text)
+            _ = requests.post(RELAY_URL, timeout=float(2), json=notification_data)
