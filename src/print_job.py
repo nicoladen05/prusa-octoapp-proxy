@@ -15,7 +15,7 @@ class PrintJob:
         display_name: str,
         path: str,
     ):
-        self.print_id: str = print_id
+        self.print_id: int = print_id
         self.notification_print_i: str = "".join(
             choices(string.ascii_lowercase + string.digits, k=32)
         )

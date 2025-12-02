@@ -131,7 +131,7 @@ class WebSocketHandler:
     async def handle_update(self, update_data: PrinterStatus | PrintJob) -> None:
         """
         Handle an update event.
-        Subscriber for Event.PRINTER_STATUS
+        Subscriber for DataPoller.Event.PRINTER_STATUS
 
         Args:
             data (dict[str, Any]): The update data.

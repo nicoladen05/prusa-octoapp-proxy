@@ -8,20 +8,20 @@ from src.printer_status import PrinterState, PrinterStatus
 from src.prusa_link import PrusaLink
 
 
-class Event(Enum):
-    PRINTER_STATUS = 1
-    PRINT_JOB = 2
-
-
 class DataPoller:
     _instance: DataPoller | None = None
+
+    class Event(Enum):
+        PRINTER_STATUS = 1
+        PRINT_JOB = 2
 
     def __init__(self, link: PrusaLink):
         DataPoller._instance = self
 
         self.link: PrusaLink = link
         self._subscribers: dict[
-            Event, set[Callable[[PrintJob | PrinterStatus], Coroutine[Any, Any, None]]]
+            DataPoller.Event,
+            set[Callable[[PrintJob | PrinterStatus], Coroutine[Any, Any, None]]],
         ] = {}
         self.current_print: PrintJob | None = None
         self.listen_task: asyncio.Task[None] | None = None
@@ -38,7 +38,7 @@ class DataPoller:
 
     def subscribe(
         self,
-        event: Event,
+        event: DataPoller.Event,
         callback: Callable[[PrintJob | PrinterStatus], Coroutine[Any, Any, None]],
     ) -> None:
         """
@@ -52,7 +52,7 @@ class DataPoller:
 
     def unsubscribe(
         self,
-        event: Event,
+        event: DataPoller.Event,
         callback: Callable[[PrintJob | PrinterStatus], Coroutine[Any, Any, None]],
     ) -> None:
         """
@@ -65,7 +65,7 @@ class DataPoller:
         self._subscribers.setdefault(event, set()).remove(callback)
 
     async def _notify_subscribers(
-        self, event: Event, update: PrinterStatus | PrintJob
+        self, event: DataPoller.Event, update: PrinterStatus | PrintJob
     ) -> None:
         for callback in self._subscribers.get(event, set()):
             await callback(update)
@@ -104,7 +104,9 @@ class DataPoller:
                     fan_print_rpm=int(printer["fan_print"]),
                 )
 
-                await self._notify_subscribers(Event.PRINTER_STATUS, printer_status)
+                await self._notify_subscribers(
+                    DataPoller.Event.PRINTER_STATUS, printer_status
+                )
                 previous_status = status
 
             # Check for job updates
@@ -135,7 +137,7 @@ class DataPoller:
                         path=job["file"]["path"],
                     )
 
-                await self._notify_subscribers(Event.PRINT_JOB, print_job)
+                await self._notify_subscribers(DataPoller.Event.PRINT_JOB, print_job)
                 previous_job = job
 
             await asyncio.sleep(rate)
