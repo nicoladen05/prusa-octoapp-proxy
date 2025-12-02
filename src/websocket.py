@@ -1,5 +1,4 @@
 import time
-from turtle import update
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect

@@ -1,10 +1,13 @@
 import time
+from enum import Enum
 from pprint import pp
 from typing import Any
 
 import requests
 
 from src.encryption import EncryptionHandler
+from src.print_job import PrintJob
+from src.printer_status import PrinterStatus
 
 RELAY_URL: str = (
     "https://europe-west1-octoapp-4e438.cloudfunctions.net/sendNotificationV2"
@@ -14,14 +17,44 @@ RELAY_URL: str = (
 class NotificationHandler:
     _instance: NotificationHandler | None = None
 
-    class Event:
-        PRINTING: str = "printing"
+    class Event(Enum):
+        PRINTING = "printing"
 
     def __init__(self, data: dict[str, Any]):
         NotificationHandler._instance = self
-        self.fcmToken = data["fcmToken"]
-        self.fcmFallbackToken = data.get("fcmTokenFallback", None)
-        self.instanceId = data["instanceId"]
+        self.devices: set[dict[str, str | None]] = set({})
+
+    def register(self, data: dict[str, Any]):
+        """
+        Register a device with the notification handler.
+
+        Args:
+            data (dict[str, Any]): The device data.
+        """
+
+        self.devices.add(
+            {
+                "fcmToken": data.get("fcmToken", None),
+                "fcmFallbackToken": data.get("fcmTokenFallback", None),
+                "instanceId": data.get("instanceId", None),
+            }
+        )
+
+    def unregister(self, data: dict[str, Any]):
+        """
+        Unregister a device with the notification handler.
+
+        Args:
+            data (dict[str, Any]): The device data.
+        """
+
+        self.devices.remove(
+            {
+                "fcmToken": data.get("fcmToken", None),
+                "fcmFallbackToken": data.get("fcmTokenFallback", None),
+                "instanceId": data.get("instanceId", None),
+            }
+        )
 
     @classmethod
     def get_instance(cls) -> NotificationHandler:
@@ -37,12 +70,29 @@ class NotificationHandler:
     def is_registered(cls) -> bool:
         return cls._instance is not None
 
-    async def send_printing_notification(self):
+    async def send_printing_notification(self, print_job: PrintJob | PrinterStatus):
         """
         Send a live printing notification to the app.
+
+        Args:
+            print_job (PrintJob): The print job object.
         """
 
-    async def send_notification(self, event: Event, args: dict[str, str]):
+        if isinstance(print_job, PrinterStatus):
+            raise ValueError("send_printing_notification was called without a PrintJob")
+
+        args = {
+            "print_id": print_job.notification_print_id,
+            "file_name": print_job.display_name,
+            "progress_percent": print_job.progress,
+            "time_remaining_sec": print_job.time_remaining_seconds,
+        }
+
+        await self.send_notification(NotificationHandler.Event.PRINTING, args)
+
+    async def send_notification(
+        self, event: NotificationHandler.Event, args: dict[str, str | float | int]
+    ):
         """
         Sends a notification to the app.
 
@@ -50,22 +100,6 @@ class NotificationHandler:
             event (Event): The event type.
             args (dict[str, str]): The notification arguments.
         """
-
-        # args = {
-        #     "print_id": "8944ee389eb74db29f38c5b1152be975",  # A random 32-character string, globally unique
-        #     "file_name": "ExamplePrint.gcode",
-        #     "file_path": "/usb/ExamplePrint.gcode",
-        #     "FileSizeKb": "1024",
-        #     "FilamentUsageMm": "100",
-        #     "FilamentWeightMg": "500",
-        #     "Event": event,
-        #     "time_remaining_sec": "300",
-        #     "CurrentLayer": "14",
-        #     "TotalLayers": "20",
-        #     "progress_percent": "0",
-        #     "duration_sec": "120",
-        #     # "message": "Print completed successfully",
-        # }
 
         android_push_data = {
             "type": event,
@@ -78,25 +112,26 @@ class NotificationHandler:
             "message": args.get("message", None),
         }
 
-        notification_data = {
-            "targets": [
-                {
-                    "fcmToken": "eDqwWjyhS06-UHWeeZYis3:APA91bEje10blwAZgET9wZP9y8L2wC1TljyIumBlCjzF6q4nXltESeXnlLsr7N0w_Y_wFTw_TlpcSdzamsyu0sG5qOyI14cZDWiWAol1gdozQHDUmND3qdg",
-                    "fcmTokenFallback": None,
-                    "instanceId": "bfb4b74d-291a-41fb-a55c-5e78aa8329fe",
-                },
-            ],
-            "highPriority": True,
-            "androidData": EncryptionHandler.get_instance().encrypt_notification(
-                android_push_data
-            ),
-            "apnsData": None,
-        }
+        for device in self.devices:
+            notification_data = {
+                "targets": [
+                    {
+                        "fcmToken": device["fcmToken"],
+                        "fcmTokenFallback": device["fcmToken"],
+                        "instanceId": device["instanceId"],
+                    },
+                ],
+                "highPriority": True,
+                "androidData": EncryptionHandler.get_instance().encrypt_notification(
+                    android_push_data
+                ),
+                "apnsData": None,
+            }
 
-        pp(notification_data)
-
-        # Make the request
-        response = requests.post(RELAY_URL, timeout=float(10), json=notification_data)
-        print("Response headers:")
-        pp(response.headers)
-        print(response.text)
+            # Make the request
+            response = requests.post(
+                RELAY_URL, timeout=float(10), json=notification_data
+            )
+            print("Response headers:")
+            pp(response.headers)
+            print(response.text)

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from src.data_poller import DataPoller
 from src.data_routes import router as data_router
+from src.notifications import NotificationHandler
 from src.octoprint_routes import router as octoprint_router
 from src.prusa_link import PrusaLink
 from src.websocket import WebSocketHandler
@@ -20,6 +21,10 @@ async def lifespan(app: FastAPI):
     )
     data_poller.subscribe(
         DataPoller.Event.PRINT_JOB, WebSocketHandler.get_instance().handle_update
+    )
+    data_poller.subscribe(
+        DataPoller.Event.PRINT_JOB,
+        NotificationHandler.get_instance().send_printing_notification,
     )
 
     await data_poller.start()
