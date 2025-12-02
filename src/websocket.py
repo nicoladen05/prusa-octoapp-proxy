@@ -180,10 +180,11 @@ class WebSocketHandler:
                 "file": {
                     "name": update_data.display_name,
                     "display": update_data.display_name,
-                    "path": update_data.path,
+                    "path": update_data.path + "/" + update_data.display_name,
                     "type": "machinecode",
                     "typePath": ["machinecode", "gcode"],
                     "user": "prusa_admin",
+                    "origin": "sdcard",
                 },
                 "estimatedPrintTime": update_data.time_printing_seconds
                 + update_data.time_remaining_seconds,
@@ -199,8 +200,6 @@ class WebSocketHandler:
             }
 
         self.cached_payload = current_payload
-
-        print(self.cached_payload)
 
         for websocket in self.websockets:
             try:
