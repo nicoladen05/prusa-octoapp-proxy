@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Coroutine
 from enum import Enum
 from typing import Any, Callable
 
-from src.print_job import PrintJob
-from src.printer_status import PrinterState, PrinterStatus
-from src.prusa_link import PrusaLink
+from print_job import PrintJob
+from printer_status import PrinterState, PrinterStatus
+from prusa_link import PrusaLink
 
 
 class DataPoller:

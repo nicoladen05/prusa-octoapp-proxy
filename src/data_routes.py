@@ -1,7 +1,7 @@
 from fastapi import APIRouter, WebSocket
 
-from src.data_poller import DataPoller
-from src.websocket import WebSocketHandler
+from data_poller import DataPoller
+from websocket import WebSocketHandler
 
 router = APIRouter()
 

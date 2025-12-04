@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import time
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from src.print_job import PrintJob
-from src.printer_status import PrinterState, PrinterStatus
+from print_job import PrintJob
+from printer_status import PrinterState, PrinterStatus
 
 PAYLOAD_TEMPLATE = {
     "current": {

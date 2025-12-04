@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 from enum import Enum
 from pprint import pp
@@ -5,9 +7,9 @@ from typing import Any
 
 import requests
 
-from src.encryption import EncryptionHandler
-from src.print_job import PrintJob
-from src.printer_status import PrinterStatus
+from encryption import EncryptionHandler
+from print_job import PrintJob
+from printer_status import PrinterStatus
 
 RELAY_URL: str = (
     "https://europe-west1-octoapp-4e438.cloudfunctions.net/sendNotificationV2"

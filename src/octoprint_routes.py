@@ -6,9 +6,9 @@ from fastapi.routing import APIRouter
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse
 
-from src.data_poller import DataPoller
-from src.encryption import EncryptionHandler
-from src.notifications import NotificationHandler
+from data_poller import DataPoller
+from encryption import EncryptionHandler
+from notifications import NotificationHandler
 
 router = APIRouter()
 
