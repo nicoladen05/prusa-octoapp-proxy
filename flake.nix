@@ -75,12 +75,12 @@
             description = "The package to use for the Prusa to OctoApp Proxy service";
           };
           user = lib.mkOption {
-            type = lib.types.string;
+            type = lib.types.str;
             default = "prusa-octoapp-proxy";
             description = "The user to run the Prusa to OctoApp Proxy service as";
           };
           group = lib.mkOption {
-            type = lib.types.string;
+            type = lib.types.str;
             default = "prusa-octoapp-proxy";
             description = "The group to run the Prusa to OctoApp Proxy service as";
           };
