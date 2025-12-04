@@ -64,7 +64,7 @@
             default = 5000;
             description = "Port to listen on";
           };
-          openFirewall = {
+          openFirewall = lib.mkOption {
             type = lib.types.bool;
             default = false;
             description = "Whether to open the firewall for the Prusa to OctoApp Proxy service";
